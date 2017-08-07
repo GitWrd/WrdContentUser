@@ -3,59 +3,93 @@ package com.wrdijkstra.wrdcontentuser;
 import com.wrdijkstra.wrdcontentuser.WrdContentContract;
 
 
+import android.app.ListActivity;
 import android.content.ContentResolver;
 import android.content.ContentValues;
+import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
+import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.EditText;
 
-public class MainActivity extends AppCompatActivity {
+import java.util.ArrayList;
+
+public class MainActivity extends ListActivity {
+
+    private ArrayList<String> results = new ArrayList<>();
+    private ContentObserver contentObserver = new ContentObserver(null) {
+        @Override
+        public void onChange(boolean selfChange) {
+            super.onChange(selfChange);
+
+            getListView().post(new Runnable() {
+                public void run() {
+                    openAndQueryDatabase();
+                    displayResultList();
+                }
+            });
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        ContentValues counter = new ContentValues();
-        ContentValues counterUpdate = new ContentValues();
-        Uri uri;
-        String uriType;
-
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        openAndQueryDatabase();
+        displayResultList();
+    }
+
+    private void displayResultList() {
+        setListAdapter(new ArrayAdapter<>(this,
+                android.R.layout.simple_list_item_1, results));
+        getListView().setTextFilterEnabled(true);
+
+    }
+
+    private void openAndQueryDatabase() {
         ContentResolver resolver = getContentResolver();
 
-//        counter.put(WrdContentContract.Counters._ID, 54 );
-//        counter.put(WrdContentContract.Counters.LABEL, "jo!" );
-//        counter.put(WrdContentContract.Counters.LOCKED, "true" );
-//        counter.put(WrdContentContract.Counters._COUNT, 112 );
-//        resolver.insert(WrdContentContract.Counters.CONTENT_URI, counter);
-//
-//        counter.put(WrdContentContract.Counters._ID, 13 );
-//        counter.put(WrdContentContract.Counters.LABEL, "huh?" );
-//        counter.put(WrdContentContract.Counters.LOCKED, "true" );
-//        counter.put(WrdContentContract.Counters._COUNT, 97 );
-//        resolver.insert(WrdContentContract.Counters.CONTENT_URI, counter);
-//
-//        counterUpdate.put(WrdContentContract.Counters._ID, 13 );
-//        counterUpdate.put(WrdContentContract.Counters._COUNT, 117 );
-//        resolver.update(WrdContentContract.Counters.CONTENT_URI, counterUpdate, WrdContentContract.Counters._ID + "=?", new String[]{counterUpdate.getAsString(WrdContentContract.Counters._ID)});
-
-        uri = WrdContentContract.Counters.CONTENT_URI;
-        Log.d( "QUERY", "uri = " + uri.toString() );
-        uriType = resolver.getType(WrdContentContract.Counters.CONTENT_URI);
-        Log.d( "QUERY", "uri type = " + uriType );
-        Cursor cursor  = resolver.query(WrdContentContract.Counters.CONTENT_URI, null, null, null, WrdContentContract.Counters.SORT_ORDER_DEFAULT );
-        if (cursor.moveToFirst()){
-            do{
+        Cursor cursor = resolver.query(WrdContentContract.Counters.CONTENT_URI, null, null, null, WrdContentContract.Counters.SORT_ORDER_DEFAULT);
+        if (cursor.moveToFirst()) {
+            results.clear();
+            do {
                 int id = cursor.getInt(cursor.getColumnIndex(WrdContentContract.Counters._ID));
                 String label = cursor.getString(cursor.getColumnIndex(WrdContentContract.Counters.LABEL));
                 String locked = cursor.getString(cursor.getColumnIndex(WrdContentContract.Counters.LOCKED));
                 int count = cursor.getInt(cursor.getColumnIndex(WrdContentContract.Counters._COUNT));
 
-                Log.d( "QUERY", "id = " + Integer.toString(id) + ", label = " + label + ", locked = " + locked + ", count = " + Integer.toString(count));
-            }while(cursor.moveToNext());
+                results.add("[" + Integer.toString(id) + "] "+ label + ", " + locked + ", " + Integer.toString(count));
+            } while (cursor.moveToNext());
         }
+
+        resolver.registerContentObserver(WrdContentContract.Counters.CONTENT_URI,false,contentObserver);
         cursor.close();
+    }
+
+    public void updateDatabase(View v) {
+        ContentResolver resolver = getContentResolver();
+
+        EditText etId = (EditText)findViewById(R.id.etId);
+        EditText etLabel = (EditText)findViewById(R.id.etLabel);
+        int id = Integer.parseInt(etId.getText().toString());
+        String label = etLabel.getText().toString();
+        ContentValues updateEntry = new ContentValues();
+
+        updateEntry.put(WrdContentContract.Counters._ID,id);
+        updateEntry.put(WrdContentContract.Counters.LABEL,label);
+        Cursor cursor = resolver.query(WrdContentContract.Counters.CONTENT_URI, null, WrdContentContract.Counters._ID + " = ?", new String[]{String.valueOf(id)}, null);
+        if (cursor.moveToFirst()) {
+            resolver.update(WrdContentContract.Counters.CONTENT_URI, updateEntry, WrdContentContract.Counters._ID + " = ?", new String[]{String.valueOf(id)});
+        }
+        else {
+            resolver.insert(WrdContentContract.Counters.CONTENT_URI, updateEntry);
+        }
+
+        etId.setText("");
+        etLabel.setText("");
     }
 }
