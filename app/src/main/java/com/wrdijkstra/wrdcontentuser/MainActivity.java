@@ -79,6 +79,10 @@ public class MainActivity extends ListActivity {
                                         public void onTextChanged(CharSequence s, int start, int before, int count) {
                                             if (s.toString().trim().length()==0) {
                                                 btUpdate.setEnabled(false);
+
+                                                if (updateLabel == true) {
+                                                    etLabel.setText("");
+                                                }
                                             }
                                             else {
                                                 btUpdate.setEnabled(true);
