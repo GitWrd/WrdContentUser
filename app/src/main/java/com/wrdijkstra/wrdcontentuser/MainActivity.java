@@ -49,24 +49,23 @@ public class MainActivity extends ListActivity {
 
         lvDbContent = (ListView)findViewById(android.R.id.list);
         lvDbContent.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                                                public void onItemClick(AdapterView<?> adapter, View v, int position, long id) {
 
-                                               public void onItemClick(AdapterView<?> adapter, View v, int position, long id) {
+                                                    String item = (String)adapter.getItemAtPosition(position);
+                                                    Matcher matcher = Pattern.compile("\\d+").matcher(item);
+                                                    matcher.find();
+                                                    int entryId = Integer.valueOf(matcher.group());
 
-                                                   String item = (String)adapter.getItemAtPosition(position);
-                                                   Matcher matcher = Pattern.compile("\\d+").matcher(item);
-                                                   matcher.find();
-                                                   int entryId = Integer.valueOf(matcher.group());
+                                                    if (isIdValid(entryId)==true) {
+                                                        String entryLabel = getLabel(entryId);
+                                                        EditText etId = (EditText)findViewById(R.id.etId);
+                                                        EditText etLabel = (EditText)findViewById(R.id.etLabel);
 
-                                                   if (isIdValid(entryId)==true) {
-                                                       String entryLabel = getLabel(entryId);
-                                                       EditText etId = (EditText)findViewById(R.id.etId);
-                                                       EditText etLabel = (EditText)findViewById(R.id.etLabel);
-
-                                                       etId.setText(String.valueOf(entryId));
-                                                       etLabel.setText(entryLabel);
-                                                   }
-                                               }
-                                           });
+                                                        etId.setText(String.valueOf(entryId));
+                                                        etLabel.setText(entryLabel);
+                                                    }
+                                                }
+                                            });
 
         etId = (EditText)findViewById(R.id.etId);
         etLabel = (EditText)findViewById(R.id.etLabel);
@@ -78,6 +77,7 @@ public class MainActivity extends ListActivity {
 
                                         @Override
                                         public void onTextChanged(CharSequence s, int start, int before, int count) {
+                                            btUpdate.setEnabled(s.toString().trim().length()!=0);
                                             if (s.toString().trim().length()==0) {
                                                 btUpdate.setEnabled(false);
 
@@ -97,21 +97,19 @@ public class MainActivity extends ListActivity {
                                     });
 
         etId.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-                                            @Override
-                                            public void onFocusChange(View v, boolean hasFocus) {
-                                                updateLabel = false;
-                                            }
-                                        });
+                                        @Override
+                                        public void onFocusChange(View v, boolean hasFocus) {
+                                            updateLabel = false;
+                                        }
+                                    });
 
         openAndQueryDatabase();
         displayResultList();
     }
 
     private void displayResultList() {
-        setListAdapter(new ArrayAdapter<>(this,
-                android.R.layout.simple_list_item_1, results));
+        setListAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, results));
         getListView().setTextFilterEnabled(true);
-
     }
 
     private void openAndQueryDatabase() {
@@ -155,17 +153,29 @@ public class MainActivity extends ListActivity {
     }
 
     private void updateLabelText() {
-        if ((etLabel.getText().toString().trim().length() == 0) || (updateLabel == true)) {
-        int id = Integer.parseInt(etId.getText().toString());
-        updateLabel = true;
-        if (isIdValid(id) == true) {
-            etLabel.setText(getLabel(id));
+        // Update label field, depending on ID field
+        if (etId.getText().toString().trim().length()==0) {
+            // ID field empty ->  clear label field if pre-filled before
+            if (updateLabel == true) {
+                etLabel.setText("");
+            }
         }
         else {
-            etLabel.setText("");
+            // Update label field only if empty, or if pre-filled before
+            if ((etLabel.getText().toString().trim().length() == 0) || (updateLabel == true)) {
+                int id = Integer.parseInt(etId.getText().toString());
+                updateLabel = true;
+                if (isIdValid(id) == true) {
+                    // Valid ID -> display corresponding Label
+                    etLabel.setText(getLabel(id));
+                }
+                else {
+                    // Invalid ID -> clear pre-filled Label field
+                    etLabel.setText("");
+                }
+            }
         }
     }
-}
 
     private boolean isIdValid ( int id ) {
         Cursor cursor = getContentResolver().query(WrdContentContract.Counters.CONTENT_URI, null, WrdContentContract.Counters._ID + " = ?", new String[]{String.valueOf(id)}, null);
@@ -187,3 +197,4 @@ public class MainActivity extends ListActivity {
         }
     }
 }
+
